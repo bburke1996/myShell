@@ -34,6 +34,11 @@ void myShell_cd(int argc, char *argv[]) {
 	}
 }
 
+/* myShell_echo is a function that represents the builtin "echo" command. The first parameter, int argc, holds the number of arguments to the "echo" command (including the 
+ * command name itself). The second parameter, char *argv[], is an array of char pointers that each point to one of the arguments to the "echo" command. So, argv[0] = "echo". If
+ * argc is less than 2, then an erorr is printed to the screen indicating that the number of command line arguments to "echo" was incorrect. Otherwise, the function prints each
+ * element of argv (except for the first element, which is "echo") to the screen. myShell_echo() has no return value. 
+ */
 void myShell_echo(int argc, char *argv[]) {
 	int i;
 	/* Verify that echo command was given the correct number of command line arguments */
@@ -46,12 +51,50 @@ void myShell_echo(int argc, char *argv[]) {
 	fprintf(stdout, "\n");
 }
 
+/* myShell_kill is a function that represents the builtin "kill" command. The first parameter, int argc, holds the number of arguments to the "kill" command (including the
+ * command name itself). The second parameter, char *argv[], is an array of char pointers that each point to one of the arguments to the "kill" command. So, argv[0] == "kill".
+ * The "kill" command is used to send signals to other processes. The function first checks the arguments to determine which options of the "kill" command are being used. There 
+ * are only two options to use the "kill" command. The first is by entering "kill pid1 [pid2, ...]". This option will terminate the processes with pids given by every element of
+ * argv after the first element. The second option is by entering "kill -signal_name pid1 [pid2, ...]". This option will send a signal called signal_name to the processes with 
+ * pids given by every element of argv after the second element. myShell_kill will return 0 if all signals/teminations were delivered successfully. If any of the signals fail
+ * for any reason, then myShell_kill returns 1. 
+ */
+int myShell_kill(int argc, char *argv[]) {
+	int i;
+
+	/* First, check if the first argument (after command name) begins with '-'. */
+
+	/* If first argument (after command name) begins with '-', then the user is sending a signal to processes. Otherwise, the user is terminating processes. */
+	if (argv[1][0] == '-') {
+		char signalName[strlen(argv[1]) - 1];
+		int signalNum;
+
+		/* Set signalName to argv[1] without its leading '-' */
+		for (i = 1; i < strlen(argv[1]); i++) signalName[i-1] = argv[1][i];
+
+		/* Call getSignalNum() to get the signal number that corresponds to signalName. */
+		signalNum = getSignalNum(signalName);
+
+		/* If there isn't a corresponding signal number, then print an error message and return 1. */
+		if (signalNum == 0) {
+			printf("%s is not one of the supported signals.\n");
+			return 1;
+		}
+		
+		/* Send signalName signal to every pid listed on the command line */
+		for (i = 2; i < argc; i++) {
+			/* Despite its name, the kill function is used to send any signal to another process. */
+			kill(argc[i], signalNum);
+		}
+	}
+}
+
 /* myShell_help is a function that represents the builtin "help" command. The first parameter, int argc, holds the number of arguments to the "help" command (including the
  * command name itself). The second parameter, char *argv[], is an array of char pointers that each point to one of the arguments to the "help" command. So, argv[0] == "help".
  * This function simply prints two lines of output to the screen that describe this shell program. myShell_help() has no return value.
  */
 void myShell_help(int argc, char *argv[]) {
-	printf("This is Brian Burke's myShell program. The builtin functions for this shell are cd, echo, exit, and help.\nUse man pages to learn about how to use any other UNIX commands\n");
+	printf("This is Brian Burke's myShell program. The builtin functions for this shell are cd, echo, exit, kill, and help.\nUse man pages to learn about how to use any other UNIX commands\n");
 }
 
 /* createShortPath() is a function that modifies argv[0] such that it is preceeded by "/bin/". This is necessary to run some commands that are not builtin to myShell. The first 
@@ -129,6 +172,8 @@ void myShellExecute(int argc, char *argv[]) {
 		exit(0);
 	else if (strcmp(argv[0], "help") == 0) 
 		myShell_help(argc, argv);
+	else if (strcmp(argv[0], "kill") == 0) 
+		myShell_kill(argc, argv);
 	else {
 		pid_t pid, wpid;
 		int status;
