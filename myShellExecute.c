@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define NUM_SHORT_PATH_COMMANDS 31
 #define NUM_LONG_PATH_COMMANDS 38
@@ -51,6 +52,78 @@ void myShell_echo(int argc, char *argv[]) {
 	fprintf(stdout, "\n");
 }
 
+/* getSignalNum is a function that returns the corresponding signal number given a signal name. The only parameter, char *signalName, is the signal name that is given. This 
+ * function returns an int that is the corresponding signal number. If signalName is not a supported signal name, then 0 is returned to indicate to the calling function that
+ * an unsupported signal name was passed. 
+ */
+int getSignalNum(char *signalName) {
+		if (strcmp(signalName, "SIGHUP") == 0) 
+			return SIGHUP;
+		else if (strcmp(signalName, "SIGINT") == 0) 
+			return SIGINT;
+		else if (strcmp(signalName, "SIGQUIT") == 0) 
+			return SIGQUIT;
+		else if (strcmp(signalName, "SIGILL") == 0) 
+			return SIGILL;
+		else if (strcmp(signalName, "SIGTRAP") == 0) 
+			return SIGTRAP;
+		else if (strcmp(signalName, "SIGABRT") == 0) 
+			return SIGABRT;
+		else if (strcmp(signalName, "SIGEMT") == 0) 
+			return SIGEMT;
+		else if(strcmp(signalName, "SIGFPE") == 0)
+			return SIGFPE;
+		else if (strcmp(signalName, "SIGKILL") == 0) 
+			return SIGKILL;
+		else if (strcmp(signalName, "SIGBUS") == 0)
+			return SIGBUS;
+		else if (strcmp(signalName, "SIGSEGV") == 0)
+			return SIGSEGV;
+		else if (strcmp(signalName, "SIGSYS") == 0)
+			return SIGSYS;
+		else if (strcmp(signalName, "SIGPIPE") == 0) 
+			return SIGPIPE;
+		else if (strcmp(signalName, "SIGALRM") == 0) 
+			return SIGALRM;
+		else if (strcmp(signalName, "SIGTERM") == 0)
+			return SIGTERM;
+		else if (strcmp(signalName, "SIGURG") == 0)
+			return SIGURG;
+		else if (strcmp(signalName, "SIGSTOP") == 0)
+			return SIGSTOP;
+		else if (strcmp(signalName, "SIGTSTP") == 0)
+			return SIGTSTP;
+		else if (strcmp(signalName, "SIGCONT") == 0)
+			return SIGCONT;
+		else if (strcmp(signalName, "SIGCHLD") == 0)
+			return SIGCHLD;
+		else if (strcmp(signalName, "SIGTTIN") == 0)
+			return SIGTTIN;
+		else if (strcmp(signalName, "SIGTTOU") == 0) 
+			return SIGTTOU;
+		else if (strcmp(signalName, "SIGIO") == 0)
+			return SIGIO;
+		else if (strcmp(signalName, "SIGXCPU") == 0)
+			return SIGXCPU;
+		else if (strcmp(signalName, "SIGXFSZ") == 0)
+			return SIGXFSZ;
+		else if (strcmp(signalName, "SIGVTALRM") == 0)
+			return SIGVTALRM;
+		else if (strcmp(signalName, "SIGPROF") == 0)
+			return SIGPROF;
+		else if (strcmp(signalName, "SIGWINCH") == 0)
+			return SIGWINCH;
+		else if (strcmp(signalName, "SIGINFO") == 0)
+			return SIGINFO;
+		else if (strcmp(signalName, "SIGUSR1") == 0)
+			return SIGUSR1;
+		else if (strcmp(signalName, "SIGUSR2") == 0)
+			return SIGUSR2;
+		else 
+			/* If this line is reached, then signalName is not a supported signal name. So, return 0. */
+			return 0;
+}
+
 /* myShell_kill is a function that represents the builtin "kill" command. The first parameter, int argc, holds the number of arguments to the "kill" command (including the
  * command name itself). The second parameter, char *argv[], is an array of char pointers that each point to one of the arguments to the "kill" command. So, argv[0] == "kill".
  * The "kill" command is used to send signals to other processes. The function first checks the arguments to determine which options of the "kill" command are being used. There 
@@ -60,7 +133,8 @@ void myShell_echo(int argc, char *argv[]) {
  * for any reason, then myShell_kill returns 1. 
  */
 int myShell_kill(int argc, char *argv[]) {
-	int i;
+	int i, retVal;
+	pid_t pid;
 
 	/* First, check if the first argument (after command name) begins with '-'. */
 
@@ -77,16 +151,32 @@ int myShell_kill(int argc, char *argv[]) {
 
 		/* If there isn't a corresponding signal number, then print an error message and return 1. */
 		if (signalNum == 0) {
-			printf("%s is not one of the supported signals.\n");
+			printf("%s is not one of the supported signals.\n", signalName);
 			return 1;
 		}
 		
-		/* Send signalName signal to every pid listed on the command line */
+		/* Send signalName signal to every pid listed on the command line. */
 		for (i = 2; i < argc; i++) {
-			/* Despite its name, the kill function is used to send any signal to another process. */
-			kill(argc[i], signalNum);
+			/* Convert the pid from string to int to pid_t. */
+			pid = (pid_t) atoi(argv[i]);
+			/* Despite its name, the kill function is used to send any signal to another process. Set retVal to 1 if any of the kill system calls fails. */
+			if (kill(pid, signalNum) > 0) 
+				retVal = 1;
+		}
+	} 
+	/* If the first argument (after command name) doesn't begin with '-', then the user is terminating processes. */
+	else {
+		/* Send a kill signal to each process whose pid is in argv after the first element. Set retVal to 1 if any of the kill system calls fails. */
+		for (i = 1; i < argc; i++) {
+ 			/* Convert the pid from string to int to pid_t. */
+			pid = (pid_t) atoi(argv[i]);
+			if (kill(pid, SIGKILL) > 0) 
+				retVal = 1;
 		}
 	}
+	
+	/* If any of the kill system calls failed (likely due to an invalid pid given on the command line), then 1 will be returned. Otherwise, 0 will be returned. */
+	return retVal;
 }
 
 /* myShell_help is a function that represents the builtin "help" command. The first parameter, int argc, holds the number of arguments to the "help" command (including the
@@ -196,7 +286,7 @@ void myShellExecute(int argc, char *argv[]) {
 			/* Otherwise, this command is not supported by myShell */
 			else {
 				printf("The %s command is not supported by myShell\n", argv[0]);
-				return;
+				exit(0);
 			}
 
 			/* Printing out argv for debugging purposes */
